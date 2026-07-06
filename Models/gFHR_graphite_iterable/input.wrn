@@ -1,0 +1,37 @@
+
+ ***** Warning: Cell c2_1 is not used in geometry
+
+
+ ***** Warning: Cell c2_2 is not used in geometry
+
+
+ ***** Warning: Nest p2 is not used in geometry
+
+
+ ***** Warning: Elemental XS (6000.09c) in burnable material fuel2
+
+
+Simulation completed.
+------------------------------------------------- MPI task 4
+Fri Jun  5 11:46:09 2026  (errors: 0, warnings: 0, notes: 0)
+
+
+Simulation completed.
+------------------------------------------------- MPI task 2
+Fri Jun  5 11:46:09 2026  (errors: 0, warnings: 0, notes: 0)
+
+
+Simulation completed.
+------------------------------------------------- MPI task 0
+Fri Jun  5 11:46:09 2026  (errors: 0, warnings: 0, notes: 4)
+
+
+Simulation completed.
+------------------------------------------------- MPI task 1
+Fri Jun  5 11:46:09 2026  (errors: 0, warnings: 0, notes: 0)
+
+
+Simulation completed.
+------------------------------------------------- MPI task 3
+Fri Jun  5 11:46:09 2026  (errors: 0, warnings: 0, notes: 0)
+

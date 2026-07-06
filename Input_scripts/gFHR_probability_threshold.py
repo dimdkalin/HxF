@@ -12,7 +12,7 @@ discrete_motion = True
 looping = False
 
 # Restart
-restart_calculation = True
+restart_calculation = False
 read_first_compositions = False
 
 # Output
@@ -86,7 +86,7 @@ else:
         looper_method = 'xyz'
 
 #%% Outputing
-output_folder_name = 'gFHR_dm_restart4' # Name of the output folder
+output_folder_name = 'gFHR_prob' # Name of the output folder
 verbosity_mode = 1
 inventory_names = []
 

@@ -40,11 +40,11 @@ pbed_universe_name = 'u_pb'
 detector_names = ['flux_pebbles_thermal', 'flux_pebbles_fast', 'power_pebbles']
 detectors = {
     "flux_pebbles_thermal": {
-        "E": "1E-11 0.625E-6",
+        "E": [1E-11,0.625E-6],
         "normalized":"normalized"
     },
     "flux_pebbles_fast": {
-        "E": "1E-4 20",
+        "E": [1E-4, 20],
         "normalized":"normalized"
     },
     "power_pebbles": {
@@ -76,14 +76,14 @@ if discrete_motion:
 
 #%% Outputing
 output_folder_name = 'gFHR_test' # Name of the output folder
-verbosity_mode = 1
+verbosity_mode = 2
 inventory_names = ['551370','551340','551360','541350','541380','541370','531310','Ce','Eu','Pd','Ag','471101','Cs','Sr','Kr','360880','360851','360830','360840','922350','922360','922380','942390','942400','942410','952410','380900']
 
 
 #%% Domain decomposition
 if domain_decomposition:
-    allowed_decomposition_types = 'rs'
-    max_domains = [6, 8]
+    allowed_decomposition_types = 'ars'
+    max_domains = [6, 6, 8]
 
 #%% Restart write
 if write_restart:

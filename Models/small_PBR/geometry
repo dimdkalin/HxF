@@ -34,4 +34,4 @@ oPyC	0.04275
 matrix
 
 cell inf u_matrix matrix -infinite
-pbed trisos u_matrix "trisos_20000.inp"
+pbed trisos u_matrix "trisos_9022.inp"

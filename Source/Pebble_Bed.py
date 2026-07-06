@@ -1583,10 +1583,10 @@ class Pebble_bed:
         elif isinstance(shift_sectors, (tuple, list, np.ndarray)):
             shift_sectors = [shift_sectors for i in range(N_levels)]
 
-        if isinstance(center, (int, type(None))):
-            center = [[center for j in range(n_domains_list[i])] for i in range(N_levels)]
-        elif isinstance(center, (tuple, list, np.ndarray)):
-            center = [center for i in range(N_levels)]
+        if isinstance(center, (int, tuple, list, np.ndarray, type(None))):
+             center = [[center for j in range(n_domains_list[i])] for i in range(N_levels)]
+        #elif isinstance(center, (tuple, list, np.ndarray)):
+            #center = [center for i in range(N_levels)]
 
         if N_levels != len(decomposition_types):
             raise Exception('List of #domains must match decomposition types in size (please use 1 letter alias)')

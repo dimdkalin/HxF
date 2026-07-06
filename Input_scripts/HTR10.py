@@ -5,7 +5,7 @@
 transport = True
 resolve_first = True
 correct = False
-domain_decomposition = False
+domain_decomposition = True
 use_decnfy_lib = True
 
 # Motion
@@ -85,7 +85,7 @@ else:
         looper_method = 'rz'
 
 #%% Outputing
-output_folder_name = 'HTR-10_ctherm_acc' # Name of the output folder
+output_folder_name = 'HTR-10_dd_2core' # Name of the output folder
 verbosity_mode = 0
 
 #%% Domain decomposition

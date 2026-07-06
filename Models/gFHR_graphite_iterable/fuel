@@ -1,0 +1,69 @@
+
+%%% Fuel 1
+
+%---Material
+mat fuel -10.5  vol 91013.12732 burn 1 tmp 959 % 0.362644 * 250971
+92235.09c 0.197507021080911
+92238.09c 0.802492978919089
+6000.09c 0.5
+8016.09c 1.5
+
+%% fuel1 is 5 wt% enriched uranium
+mat fuel1 -10.5  vol 91013.12732 burn 1 tmp 959 % 0.362644 * 250971
+92235.09c 0.0506072673168
+92238.09c 0.9493927326832
+6000.09c 0.5
+8016.09c 1.5
+
+%% fuel2 is 4.4 wt% enriched uranium
+mat fuel2 -10.5  vol 91013.12732 burn 1 tmp 959 % 0.362644 * 250971
+92235.09c 0.0445378116207
+92238.09c 0.9554621883793
+6000.09c 0.5
+8016.09c 1.5
+
+
+%%poison is depleted uranium
+mat poison -10.5  vol 91013.12732 burn 1 tmp 959 % 0.362644 * 250971
+92238.09c 1
+6000.09c 0.5
+8016.09c 1.5
+
+
+
+%---Triso particle 
+particle p1
+fuel2	0.021250000000000005
+buffer    0.031250
+PyC    0.035250
+SiC    0.038750
+PyC    0.042750
+matrix
+
+particle p2
+poison	0.021250000000000005
+buffer    0.031250
+PyC    0.035250
+SiC    0.038750
+PyC    0.042750
+matrix
+
+
+%---Triso  lattice
+%lat l1 6 0. 0. 0.08860629 p1
+cell inf infU matrix -infinite
+pbed l1 infU "/global/scratch/users/dimitrikalinich/HxF/Models/gFHR_graphite_iterable/trisobed"
+pbed l2 infU "/global/scratch/users/dimitrikalinich/HxF/Models/gFHR_graphite_iterable/trisobed2"
+
+%---Fill pebble with lattice
+cell c1_1 u_fuel_pebble  pebgraph -central_graphite
+cell c1_2 u_fuel_pebble  fill l1 central_graphite -graphite_mat
+cell c1_3 u_fuel_pebble  pebshell graphite_mat
+
+cell c2_1 u_graph_pebble pebshell -graphite_mat
+cell c2_2 u_graph_pebble pebshell  graphite_mat
+
+%cell c2_1 u_graph_pebble  pebgraph -central_graphite
+%cell c2_2 u_graph_pebble  fill l2 central_graphite -graphite_mat
+%cell c2_3 u_graph_pebble  pebshell graphite_mat
+

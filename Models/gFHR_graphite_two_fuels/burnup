@@ -1,0 +1,7 @@
+dep butot 10.8
+
+%set his 1
+div fuel1 peb u_pb 1 u_fuel_pebble1
+div fuel2 peb u_pb 1 u_fuel_pebble2
+set pcc 0 % NS@KP this needs to be examined for TR
+%set bumode 2 16

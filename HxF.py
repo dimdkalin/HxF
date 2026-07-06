@@ -2,6 +2,7 @@
 # - Domain decomposition, if uncommented, takes too long to update domains -> changes to Serpent source code to do
 # - When using more than 15000 neutrons/(cycle.node) it happens that the calculation just holds for ever
 # - Thermal coupling with domain decomposition does not work
+# - Insertion of 'uni' column only works with 'u_fuel_pebble' and 'u_graph_pebble'
 
 print("""
 ============================================================
@@ -268,6 +269,10 @@ if not restart_calculation:
 active_pebbles_dict = dict()
 threshold_pebbles_dict = dict()
 data['isactive'] = False
+
+if not ('uni' in data):
+    data['uni']=np.where(data['pebble_type_0']==True,'u_fuel_pebble','u_graph_pebble')
+
 for uni_id, (uni_name, uni) in enumerate(pebbles_dict.items()):
     data[f'pebble_type_{uni_id}'] = (data['uni'] == uni_name)
     if 'mat_name' in uni.keys():

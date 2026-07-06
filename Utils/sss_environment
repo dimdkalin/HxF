@@ -43,14 +43,30 @@ echo "Activating Conda environment..."
 conda deactivate
 conda activate $CONDA_ENV_NAME
 
+# RE-ENFORCE CLUSTER MPI PATHS OVER CONDA BINARES
+echo "Re-asserting system OpenMPI priorities..."
+module unload openmpi/4.1.6
+module load openmpi/4.1.6
+
 # Check and install conda-build if necessary
-echo "Checking for conda-build..."
-if ! conda list conda-build &> /dev/null; then
-    echo "Installing conda-build..."
-    conda install -y conda-build
-fi
+#echo "Checking for conda-build..."
+#if ! conda list conda-build &> /dev/null; then
+    #echo "Installing conda-build..."
+    #conda install -y conda-build
+#fi
 
 # Set environment variables
 
 # Print message indicating environment has been loaded
 echo "Serpent environment loaded."
+
+## Force appropriate OpenMPI network transport layers based on selected partition
+#if [[ "$PARTITION" == *"savio3"* ]]; then
+## savio3 uses Intel Omni-Path (PSM2)
+#export OMPI_MCA_mtl=psm2
+#export OMPI_MCA_btl=^openib,ucx
+#else
+## savio2 / savio2_bigmem use Mellanox InfiniBand (UCX)
+#export OMPI_MCA_pml=ucx
+#export OMPI_MCA_btl=^openib,psm2
+#fi

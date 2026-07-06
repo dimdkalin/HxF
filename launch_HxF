@@ -53,4 +53,6 @@ echo "Serpent path: ${SERPENT_EXE}"
 echo "Nuclear data path: ${SERPENT_DATA} (${SERPENT_ACELIB}, ${SERPENT_DECLIB}, ${SERPENT_NFYLIB})"
 echo "Time limit: ${NHOURS} hours"
 echo "------------------------------------------------------"
-sbatch -J $JOB_NAME -o $OUTPUT_FILE -e $ERROR_FILE -A $GROUP_ACCOUNT -c $PARTITION_CPUS_PER_NODE -q $QOS -p $PARTITION -N $NNODES -n $NNODES -t $TIMELIMIT --exclusive Utils/exe.sub
+sbatch --exclude=n0185.savio2,n0146.savio3,n0029.savio3,n0127.savio3,n0238.savio3,n0242.savio3,n0247.savio3,n0248.savio3 -J $JOB_NAME -o $OUTPUT_FILE -e $ERROR_FILE -A $GROUP_ACCOUNT -c $PARTITION_CPUS_PER_NODE -q $QOS -p $PARTITION -N $NNODES -n $NNODES -t $TIMELIMIT --exclusive Utils/exe.sub
+#sbatch --exclude=n0185.savio2,n0146.savio3,n0029.savio3,n0127.savio3,n0238.savio3,n0242.savio3,n0247.savio3,n0248.savio3 -J $JOB_NAME -o $OUTPUT_FILE -e $ERROR_FILE -A $GROUP_ACCOUNT -q $QOS -p $PARTITION -N $NNODES -n $NNODES -t $TIMELIMIT --exclusive Utils/exe.sub
+
