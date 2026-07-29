@@ -141,7 +141,8 @@ class Pebble_bed:
         if filter:
             subpbed = deepcopy(self)
             are_ghosts = self.is_ghost()
-            self.N_ghosts = sum(are_ghosts)
+            self.N_ghosts = sum(are_ghosts)   
+            subpbed.data = subpbed.data.convert_dtypes()
             subpbed.data.loc[are_ghosts, :] = np.nan
         return subpbed
 
@@ -1617,6 +1618,7 @@ class Pebble_bed:
 
         self.data = self.data.loc[old_index] #.sort_values('id')
         are_ghosts = self.is_ghost()
+        self.data = self.data.convert_dtypes()
         self.data.loc[are_ghosts, 'domain_id'] = np.nan
         self.domains = dict()
         _, self.cnt_domains = np.unique(self.data.domain_id, return_counts=True)
@@ -1707,6 +1709,7 @@ class Pebble_bed:
 
             angles = angles.sort_values()
             domain_id = pd.DataFrame(-np.ones(angles.shape), index=angles.index)
+            
             i_pebble = 0
             are_ghosts = self.is_ghost()
             for i_domain in range(n_domains):
@@ -1716,6 +1719,7 @@ class Pebble_bed:
                         domain_id.loc[angles.index[i_pebble]] = i_domain
                         cnt_domain += 1
                     else:
+                        domain_id = domain_id.convert_dtypes()
                         domain_id.loc[angles.index[i_pebble]] = np.nan
                     i_pebble += 1
 
@@ -1736,6 +1740,7 @@ class Pebble_bed:
 
             radial_dist = self.data.r_dist.sort_values()
             domain_id = pd.DataFrame(-np.ones(radial_dist.shape), index=radial_dist.index)
+            
             i_pebble = 0
             are_ghosts = self.is_ghost()
             for i_domain in range(n_domains):
@@ -1745,6 +1750,7 @@ class Pebble_bed:
                         domain_id.loc[radial_dist.index[i_pebble]] = i_domain
                         cnt_domain += 1
                     else:
+                        domain_id = domain_id.convert_dtypes()
                         domain_id.loc[radial_dist.index[i_pebble]] = np.nan
                     i_pebble += 1
 
@@ -1762,6 +1768,7 @@ class Pebble_bed:
 
             axial_dist = self.data.z.sort_values()
             domain_id = pd.DataFrame(-np.ones(axial_dist.shape), index=axial_dist.index)
+            
             i_pebble = 0
             are_ghosts = self.is_ghost()
             for i_domain in range(n_domains):
@@ -1771,6 +1778,7 @@ class Pebble_bed:
                         domain_id.loc[axial_dist.index[i_pebble]] = i_domain
                         cnt_domain += 1
                     else:
+                        domain_id = domain_id.convert_dtypes()
                         domain_id.loc[axial_dist.index[i_pebble]] = np.nan
                     i_pebble += 1
 
@@ -1801,6 +1809,7 @@ class Pebble_bed:
                         domain_id.loc[dist.index[i_pebble]] = i_domain
                         cnt_domain += 1
                     else:
+                        domain_id = domain_id.convert_dtypes()
                         domain_id.loc[dist.index[i_pebble]] = np.nan
                     i_pebble += 1
 

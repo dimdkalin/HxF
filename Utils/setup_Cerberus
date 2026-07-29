@@ -24,7 +24,7 @@ else
 fi
 
 # Create custom conda directory in scratch folder
-SCRATCH="/global/scratch/users/$USER"
+SCRATCH="/global/home/users/$USER"
 echo "Making new conda directory for packages in: $SCRATCH/conda..."
 mkdir -p $SCRATCH/conda
 conda config --add envs_dirs $SCRATCH/conda

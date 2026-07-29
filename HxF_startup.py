@@ -117,7 +117,12 @@ init_case(case_name, filename_input, path_to_case, output_folder_name) # Copy in
 os.chdir(f'Cases/{output_folder_name}') # Go to output folder
 atexit.register(os.chdir, original_path) # Come back to original folder when the script ends (even if error)
 process_input(main_input_file, pbed_universe_name)
-count_replaced = np.zeros(len(bank_centers))
+
+#Set up data structures for startup
+if startup:
+    count_replaced = np.zeros(len(bank_centers))
+    k_arr = []
+    last_replaced = 0.0
 #%% Inventory
 inventory_names  = process_inventory(inventory_names) # translate keywords to isotopes if needed
 with open(main_input_file, 'a') as f:
@@ -241,7 +246,7 @@ else:
     if restart_calculation or read_first_compositions:
         data = pd.read_csv(restart_data, index_col=0)
     else:
-        data = pd.read_csv(pbed_file, header=None, names=['x', 'y', 'z', 'r', 'uni'], delim_whitespace=True)
+        data = pd.read_csv(pbed_file, header=None, names=['x', 'y', 'z', 'r', 'uni'], sep=r"\s+")
 
     columns_group = data.groupby(["y", "x"], sort=False).ngroup().add(1) - 1
     data["column_id"] = columns_group
@@ -678,6 +683,8 @@ for step in range(first_step, Nsteps):
                 serpent.solve()
                 print_with_timestamp('\tWaiting for Serpent...')
                 keff = Serpent_get_values(tra['keff'])[0]
+                if startup:
+                    k_arr.append(keff)
                 keff_rel_unc = Serpent_get_values(tra['keff_rel_unc'])[0]
                 keff_unc = keff*keff_rel_unc
                 pbed.cycle_hist.loc[step, ['keff', 'keff_relative_uncertainty', 'keff_absolute_uncertainty']] = [keff, keff_rel_unc, keff_unc]
@@ -766,7 +773,6 @@ for step in range(first_step, Nsteps):
         print_with_timestamp(f'\t\t{Nrecirculated} pebbles to recirculate\n')
 
         #TODO
-        #For now: replace graphite with fuel2, then all fuel2 with fuel1
         if startup:
             if pbed.cycle_hist.loc[step, 'fuel_fraction'] < target_fuel_frac:
                 to_replace = (pbed.data['recirculated'] & ~pbed.data['isactive'])
@@ -775,6 +781,22 @@ for step in range(first_step, Nsteps):
                 to_replace = (pbed.data['recirculated'] & ~(pbed.data['mat_name'] == bank_mats[-1]))
             pbed.data['replaced'] = False
             replace_indices = np.where(to_replace)[0]
+            ###CALCULATE replace_num here
+            if len(k_arr) == 1:
+                replace_num = calcReplace(pid_constants, k_arr)
+                last_replaced = replace_num
+            else:
+                replace_num = calcReplace(pid_constants, k_arr, last_replaced)
+                last_replaced = replace_num
+            
+            #impose limits on response
+            replace_num = int(replace_num)
+            if replace_num < 0:
+                replace_num = 0
+            elif replace_num > len(replace_indices):
+                replace_num = len(replace_indices)
+
+            
             if replace_num < len(replace_indices):
                 replace_indices = np.random.choice(replace_indices, size = replace_num , replace = False)
             for ind in replace_indices:
@@ -795,91 +817,9 @@ for step in range(first_step, Nsteps):
                 if(count_replaced[mat_ind] < num_core):
                     replace_ind = int((mat_ind+1)*num_core+count_replaced[mat_ind])
                     pbed.data.loc[[ind,replace_ind],['x','y','z']] = pbed.data.loc[[replace_ind,ind],['x','y','z']].values
-                    pbed.data.loc[ind,'replaced'] = True
+                    pbed.data.loc[replace_ind,'replaced'] = True
                     count_replaced[mat_ind] += 1
-            Nreplaced = pbed.data['replaced'].sum()
             
-            #if pbed.cycle_hist.loc[step, 'fuel_fraction'] < target_fuel_frac:
-                #to_replace = (pbed.data['recirculated'] & ~pbed.data['isactive'])
-                #pbed.data['replaced'] = False
-                #replace_indices = np.where(to_replace)[0]
-                #if replace_num < len(replace_indices):
-                    #replace_indices = np.random.choice(replace_indices, size = replace_num , replace = False)
-                #for ind in replace_indices:
-                    #pbed.data.loc[ind,'replaced'] = True
-                    #pbed.data.loc[[ind,num_core+count_replaced[0]],['x','y','z']] = pbed.data.loc[[num_core+count_replaced[0],ind],['x','y','z']].values()
-                    #count_replaced[0] += 1
-                #pbed.data.loc[to_replace, 'replaced'] = True
-                #Nreplaced = pbed.data['replaced'].sum()
-                    
-                # to_replace_x = pbed.data.loc[pbed.data['replaced'], 'x']
-                # to_replace_yz = pbed.data.loc[pbed.data['replaced'], ['y','z']]
-                
-                # for i in range(Nreplaced):
-                #     x_i = to_replace_x.iloc[i] + bank_centers[0]
-                #     yz_i = to_replace_yz.iloc[i]
-                #     pbed.data.loc[(abs(pbed.data['x'] - x_i) < 1e-3) & (abs(pbed.data['y'] - yz_i[0]) < 1e-3) & (abs(pbed.data['z'] - yz_i[1]) < 1e-3), 'x'] -= bank_centers[0]
-                    
-                # pbed.data.loc[pbed.data['replaced'], 'x'] += bank_centers[0]
-            #else:
-                #Replace removed pebble with next material in bank_mats
-                #to_replace = (pbed.data['recirculated'] & ~(pbed.data['mat_name'] == bank_mats[-1]))
-                #pbed.data['replaced'] = False
-                #replace_indices = np.where(to_replace)[0]
-                #if replace_num < len(replace_indices):
-                    #replace_indices = np.random.choice(replace_indices, size = replace_num , replace = False)
-                #for ind in replace_indices:
-                    #pbed.data.loc[ind,'replaced'] = True
-                #Nreplaced = pbed.data['replaced'].sum()
-                
-                #to_replace_mat = pbed.data.loc[pbed.data['replaced'], 'mat_name']
-                
-                # for ind in replace_indices:
-                #     mat_i = to_replace_mat.iloc[ind]
-                #     mat_ind = 0
-                #     while mat_i != bank_mats[mat_ind]:
-                #         mat_ind += 1
-                #         if(mat_ind >= len(bank_mats)):
-                #             #Replace with first bank material
-                #             mat_ind = -1
-                #             break
-                    # pbed.data.loc[[ind,num_core+count_replaced[mat_ind]],['x','y','z']] = pbed.data.loc[[num_core+count_replaced[mat_ind],ind],['x','y','z']].values()
-                    # count_replaced[mat_ind] += 1
-                
-                #to_replace_x = pbed.data.loc[pbed.data['replaced'], 'x']
-                #to_replace_yz = pbed.data.loc[pbed.data['replaced'], ['y','z']]
-                #to_replace_mat = pbed.data.loc[pbed.data['replaced'], 'mat_name']
-        
-                # for i in range(Nreplaced):
-                #     mat_i = to_replace_mat.iloc[i]
-                #     mat_ind = 0
-                #     while mat_i != bank_mats[mat_ind]:
-                #         mat_ind += 1
-                #         if(mat_ind >= len(bank_mats)):
-                #             #Replace with first bank material
-                #             mat_ind = -1
-                #             break
-                    
-                #     xyz_replacing = pbed.data.iloc[num_core*(mat_ind+1)+count_replaced[mat_ind+1]]
-                    
-                        
-                        
-                        
-                        
-                        
-                        
-                #     x_i = to_replace_x.iloc[i] + bank_centers[mat_ind+1]
-                #     yz_i = to_replace_yz.iloc[i]
-                #     pbed.data.loc[(abs(pbed.data['x'] - x_i) < 1e-3) & (abs(pbed.data['y'] - yz_i[0]) < 1e-3) & (abs(pbed.data['z'] - yz_i[1]) < 1e-3), 'x'] -= bank_centers[mat_ind+1]
-                
-                # if(Nreplaced > 0):
-                #     pbed.data.loc[pbed.data['replaced'], 'x'] += bank_centers[mat_ind+1]
-            
-            new_positions = pbed.data[['x','y','z','r']]
-            new_xyzr = new_positions.values.ravel() # flatten array
-            Serpent_set_values(tra['xyzr_in'], new_xyzr) # communicate to Serpent
-            pbed.data[[*'xyzr']] = xyzr_to_array(new_xyzr) # fill table with new positions
-            pbed.data['r_dist'] = np.linalg.norm(pbed.data[['x', 'y']], axis=1) # calculate new radial positions
 
         # Detect discarded pebbles based on set threshold
         pbed.data['discarded'] = False
@@ -906,13 +846,12 @@ for step in range(first_step, Nsteps):
 
             Ndiscarded = pbed.data.loc[pbed.data[f'pebble_type_{uni_id}'], "discarded"].sum()
             print_with_timestamp(f'\t\t\t{Ndiscarded} pebbles to discard\n')
-        Ndiscarded_tot = pbed.data["discarded"].sum()
+        Ndiscarded = pbed.data["discarded"].sum()
         print_with_timestamp(f'\t\t{Ndiscarded} pebbles to discard\n')
 
         # Add to pebble inventory table
         pbed.cycle_hist.loc[step, ['recirculated', 'discarded']] = [Nrecirculated, Ndiscarded]
-        if startup:
-            pbed.cycle_hist.loc[step, ['replaced']] = Nreplaced
+        
 
         # Before anything, decay pebbles which were recirculated (if decay step>0)
         if transport and (decay_step > 0 or write_restart_discharged):
@@ -994,22 +933,65 @@ for step in range(first_step, Nsteps):
         if transport:
             for uni_id, (uni_name, uni) in enumerate(threshold_pebbles_dict.items()):
                 material = uni['mat_name']
-                discarded = pbed.data.loc[pbed.data[f'pebble_type_{uni_id}'], "discarded"].values
-                burnup_vec = pbed.data.loc[pbed.data[f'pebble_type_{uni_id}'], "burnup"].values
-                burnup_vec[discarded] = 0.0
+                if (startup & (material != bank_mats[-1])) :
+                    #replace pebble with fresh pebble of next fuel type 
+                    to_replace = pbed.data.loc[pbed.data[f'pebble_type_{uni_id}'], "discarded"]
+                    replace_indices = np.where(to_replace)[0]
+                    for ind in replace_indices:
+                        mat_ind = 0
+                        while material != bank_mats[mat_ind]:
+                            mat_ind += 1
+                            if(mat_ind >= len(bank_mats)):
+                                #Replace with first bank material
+                                mat_ind = -1
+                                break
+                        #Replace with material from next bank in series        
+                        mat_ind += 1
+                        if(count_replaced[mat_ind] < num_core):
+                            replace_ind = int((mat_ind+1)*num_core+count_replaced[mat_ind])
+                            pbed.data.loc[[ind,replace_ind],['x','y','z']] = pbed.data.loc[[replace_ind,ind],['x','y','z']].values
+                            pbed.data.loc[replace_ind,'replaced'] = True
+                
+                            count_replaced[mat_ind] += 1
+                    
+                else:
+                    discarded = pbed.data.loc[pbed.data[f'pebble_type_{uni_id}'], "discarded"].values
+                    burnup_vec = pbed.data.loc[pbed.data[f'pebble_type_{uni_id}'], "burnup"].values
+                    burnup_vec.flags.writeable = True
+                    burnup_vec[discarded] = 0.0
 
-                Serpent_set_values(tra['reset_fuel'][getdict(active_pebbles_dict, 'mat_name')[uni_id]], discarded.astype(int))
-                Serpent_set_values(tra['burnup_in'][getdict(active_pebbles_dict, 'mat_name')[uni_id]], burnup_vec.astype(float))
+                    Serpent_set_values(tra['reset_fuel'][getdict(active_pebbles_dict, 'mat_name')[uni_id]], discarded.astype(int))
+                    Serpent_set_values(tra['burnup_in'][getdict(active_pebbles_dict, 'mat_name')[uni_id]], burnup_vec.astype(float))
 
             # Reset integrated tallies to 0
             for name in detectors:
                 pbed.data.loc[pbed.data['discarded'], f'integrated_{name}'] = 0.0
                 pbed.data.loc[pbed.data['discarded'], f'integrated_{name}_unc'] = 0.0
+                
+                if startup:
+                    pbed.data.loc[pbed.data['replaced'], f'integrated_{name}'] = 0.0
+                    pbed.data.loc[pbed.data['replaced'], f'integrated_{name}_unc'] = 0.0
 
         pbed.data.loc[pbed.data['discarded'], 'insertion_step'] = step # set insertion step of fresh pebble to current step
         pbed.data.loc[pbed.data['discarded'], 'residence_time'] = 0.0 # reset residence time to 0
         pbed.data.loc[pbed.data['discarded'], 'passes'] = 1 # reset number of passes to 1
         pbed.data.loc[pbed.data['discarded'], 'initial'] = 0 # once replaced at least once, pebbles are not initial anymore
+        
+        if startup:
+            pbed.data.loc[pbed.data['replaced'], 'insertion_step'] = step # set insertion step of fresh pebble to current step
+            pbed.data.loc[pbed.data['replaced'], 'residence_time'] = 0.0 # reset residence time to 0
+            pbed.data.loc[pbed.data['replaced'], 'passes'] = 1 # reset number of passes to 1
+            pbed.data.loc[pbed.data['replaced'], 'initial'] = 0 # once replaced at least once, pebbles are not initial anymore
+            
+            Nreplaced = pbed.data['replaced'].sum()
+            print_with_timestamp(f'\t\t\t{Nreplaced} pebbles replaced\n')
+            pbed.cycle_hist.loc[step, ['replaced']] = Nreplaced
+            
+            new_positions = pbed.data[['x','y','z','r']]
+            new_xyzr = new_positions.values.ravel() # flatten array
+            Serpent_set_values(tra['xyzr_in'], new_xyzr) # communicate to Serpent
+            pbed.data[[*'xyzr']] = xyzr_to_array(new_xyzr) # fill table with new positions
+            pbed.data['r_dist'] = np.linalg.norm(pbed.data[['x', 'y']], axis=1) # calculate new radial positions
 
         # Store reinserted information (fresh + non-discarded pebbles)
         print_with_timestamp(f'\tStoring {Nrecirculated} reinserted pebbles information')
@@ -1068,6 +1050,8 @@ for step in range(first_step, Nsteps):
 
                     # Extract transport data
                     keff = Serpent_get_values(tra['keff'])[0]
+                    if startup:
+                        k_arr.append(keff)
                     keff_rel_unc = Serpent_get_values(tra['keff_rel_unc'])[0]
                     keff_unc = keff*keff_rel_unc
                     Q = Serpent_get_values(tra['Q']) # There seem to be a transferrable on power, use it
@@ -1151,6 +1135,8 @@ for step in range(first_step, Nsteps):
                 Serpent_set_values(tra['write_restart'], step)
 
             keff = Serpent_get_values(tra['keff'])[0]
+            if startup:
+                k_arr.append(keff)
             keff_rel_unc = Serpent_get_values(tra['keff_rel_unc'])[0]
             keff_unc = keff*keff_rel_unc
             pbed.cycle_hist.loc[step, ['keff', 'keff_relative_uncertainty', 'keff_absolute_uncertainty']] = [keff, keff_rel_unc, keff_unc]

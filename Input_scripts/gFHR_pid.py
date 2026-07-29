@@ -39,7 +39,8 @@ pbed_cell_name = 'c_pb'
 r_bed = 120
 bank_centers = [1000]
 bank_mats = ['fuel1']
-replace_num = 9842
+#max_replace = 5000
+pid_constants = [2e5,1e5,0]
 
 # Others
 pbed_universe_name = 'u_pb'
@@ -66,7 +67,7 @@ recirc_threshold = 1 # cm, absolute value
 
 # Discrete motion
 if discrete_motion:
-    Nrows_to_move = [6]*(120)+[3]*(Nsteps-120)
+    Nrows_to_move = [1]*Nsteps
     time_per_pass = 522/8 # days
 
 # DEM
@@ -86,7 +87,7 @@ else:
         looper_method = 'xyz'
 
 #%% Outputing
-output_folder_name = 'gFHR_savio3_test' # Name of the output folder
+output_folder_name = 'gFHR_pid_2e5_1e5_0_1row_rerun' # Name of the output folder
 verbosity_mode = 1
 inventory_names = []
 

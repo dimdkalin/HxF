@@ -759,6 +759,23 @@ def getdict(dictionary, key=None):
 		return np.array(list(element.get(key) for element in dictionary.values()))
 	else:
 		return np.array(list(dictionary.keys()))
+
+def calcReplace(pid_constants, k_arr,replaced=0.0):
+    Kp = pid_constants[0]
+    Ki = pid_constants[1]
+    Kd = pid_constants[2]
+    K1 = Kp+Ki+Kd
+    K2 = (-Kp-2*Kd)
+    K3 = Kd
+    
+    if len(k_arr) == 1:
+        replace_num = K1*(1.0-k_arr[-1])
+    elif len(k_arr) == 2:
+        replace_num = replaced + K1*(1.0-k_arr[-1])+K2*(1.0-k_arr[-2])
+    else:
+        replace_num = replaced + K1*(1.0-k_arr[-1])+K2*(1.0-k_arr[-2]) + K3*(1.0-k_arr[-3])    
+    return replace_num
+
 #data, PF, N, output = use_disperser('cylinder', (120.00, 60.00, 369.47), 0.6, 2, 1, 'fpb_pos', 64, grow_and_shake=True, shake_factor=0.05, growth_factor=0.05, print_output=True)
 
 # %%
