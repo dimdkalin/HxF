@@ -3,7 +3,7 @@
 # - When using more than 15000 neutrons/(cycle.node) it happens that the calculation just holds for ever
 # - Thermal coupling with domain decomposition does not work
 # - Startup support only for discrete motion
-# - Startup might not support restart files
+# - PID control might not work properly when there is more than one type of bank material
 
 print("""
 ============================================================
@@ -81,6 +81,10 @@ if transport and 'burnup' not in extra_fields:
 # Solve first and restart are incompatible
 if resolve_first and restart_calculation:
     raise Exception('Resolve first and restart calculation are not compatible.')
+    
+# Startup and read first compositions are incompatible
+if startup and read_first_compositions:
+    raise Exception('Startup and read first compositions are not compatible.')
 
 # Print
 print_with_timestamp("Simulation Input Parameters Summary:")
@@ -162,6 +166,19 @@ if transport:
         print_with_timestamp(f'Restarting from step {restart_step}, binary data at "{restart_binary}" and reading data at "{restart_data}".')
         if not os.path.exists(restart_data):
             raise Exception(f'Restart mode selected but no restart data table found at {restart_data}')
+        if startup:
+            if not os.path.exists(restart_cycle_data):
+                raise Exception(f'Restart mode selected with startup but no restart cycle data table found at {restart_cycle_data}')
+            cycle_data = pd.read_csv(restart_cycle_data, index_col=0)
+            k_arr = cycle_data['keff'].tolist()
+            replaced_arr = np.zeros(len(k_arr))
+            for i in range(len(replaced_arr)):
+                if i == 0 :
+                    replaced_arr[i] = calcReplace(pid_constants, k_arr[:i+1])
+                else:
+                    replaced_arr[i] = calcReplace(pid_constants, k_arr[:i+1], replaced_arr[i-1])
+            last_replaced = replaced_arr[-2]
+            
         restart_files = glob(restart_binary+'*')
         if len(restart_files)==0:
             raise Exception(f'Restart mode selected but no restart binary found at {restart_binary}')
@@ -245,6 +262,12 @@ else:
     print_with_timestamp(f'Using discrete motion')
     if restart_calculation or read_first_compositions:
         data = pd.read_csv(restart_data, index_col=0)
+        pbed_data = pd.read_csv(pbed_file, header=None, names=['x', 'y', 'z', 'r', 'uni'], sep=r"\s+")
+        data['uni'] = pbed_data['uni']
+        if startup:
+            for ind, mat in enumerate(bank_mats):
+                #replaced pebbles are ones in core that were not there initially
+                count_replaced[ind] = len(data.loc[(data['r_dist'] <= r_bed) & (data['initial']==0) & (data['mat_name']==bank_mats[ind])])
     else:
         data = pd.read_csv(pbed_file, header=None, names=['x', 'y', 'z', 'r', 'uni'], sep=r"\s+")
 
@@ -341,7 +364,11 @@ if domain_decomposition:
         first_pbed.decompose_in_domains(decomposition_domains, decomposition_types)
         first_pbed.data.loc[data['isactive'], 'domain_id'].astype(int).to_csv('initial_domains1.txt', index=False, header=False)
         init_domain_files.append('initial_domains1.txt')
-        data.loc[data['isactive'] & data['r_dist'] <= r_bed , 'domain_id'] = first_pbed.data.loc[data['isactive'], 'domain_id']
+        try:
+            data['domain_id'] = data['domain_id'].astype('Int64')
+        except:
+            pass
+        data.loc[data['isactive'] & (data['r_dist'] <= r_bed) , 'domain_id'] = first_pbed.data.loc[data['isactive'], 'domain_id']
         
         #repeat for pebbles in pebble banks
         for i,cen in enumerate(bank_centers):
@@ -772,7 +799,6 @@ for step in range(first_step, Nsteps):
         Nrecirculated = pbed.data["recirculated"].sum()
         print_with_timestamp(f'\t\t{Nrecirculated} pebbles to recirculate\n')
 
-        #TODO
         if startup:
             if pbed.cycle_hist.loc[step, 'fuel_fraction'] < target_fuel_frac:
                 to_replace = (pbed.data['recirculated'] & ~pbed.data['isactive'])
@@ -789,12 +815,18 @@ for step in range(first_step, Nsteps):
                 replace_num = calcReplace(pid_constants, k_arr, last_replaced)
                 last_replaced = replace_num
             
+            #check if maximum limit is defined in input    
+            try:
+                max_replace
+            except NameError:
+                max_replace = len(replace_indices)
+            
             #impose limits on response
             replace_num = int(replace_num)
             if replace_num < 0:
                 replace_num = 0
-            elif replace_num > len(replace_indices):
-                replace_num = len(replace_indices)
+            elif replace_num > max_replace:
+                replace_num = max_replace
 
             
             if replace_num < len(replace_indices):

@@ -14,7 +14,7 @@ PARTITION="savio3"  # Name of partition (e.g. savio, savio2, savio3, savio2_bigm
 NNODES=5 #Number of nodes to use
 QOS="savio_lowprio" # QoS associated to group account (savio_normal for fc_neutronics, nuclear_savio_normal for co_nuclear)
 NHOURS=72 # Time limit in hours for the job
-SUFFIX_JOB="3" # Suffix (if needed) for the job name, otherwise takes the name of the Python input script
+SUFFIX_JOB="2" # Suffix (if needed) for the job name, otherwise takes the name of the Python input script
 
 # Serpent variables
 #SERPENT_EXE="/global/home/groups/co_nuclear/HxF_tools/serpent2.2.0_HxF_dev_last/sss2"

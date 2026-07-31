@@ -39,7 +39,7 @@ pbed_cell_name = 'c_pb'
 r_bed = 120
 bank_centers = [1000]
 bank_mats = ['fuel1']
-#max_replace = 5000
+max_replace = 5000
 pid_constants = [2e5,1e5,0]
 
 # Others
@@ -67,7 +67,7 @@ recirc_threshold = 1 # cm, absolute value
 
 # Discrete motion
 if discrete_motion:
-    Nrows_to_move = [1]*Nsteps
+    Nrows_to_move = [6]*Nsteps
     time_per_pass = 522/8 # days
 
 # DEM
@@ -87,7 +87,7 @@ else:
         looper_method = 'xyz'
 
 #%% Outputing
-output_folder_name = 'gFHR_pid_2e5_1e5_0_1row_rerun' # Name of the output folder
+output_folder_name = 'gFHR_pid_2e5_1e5_0_6rows_max_5e3' # Name of the output folder
 verbosity_mode = 1
 inventory_names = []
 
@@ -106,9 +106,10 @@ if write_restart_discarded:
 
 #%% Restart read
 if restart_calculation:
-    restart_step = 642
-    restart_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_165_fine_2/Data/core_642.csv'
-    restart_binary = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_165_fine_2/wrk_Serpent/input.wrk_642'
+    restart_step = 270
+    restart_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_2e5_1e5_0_6rows/Data/core_270.csv'
+    restart_cycle_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_2e5_1e5_0_6rows/Data/cycle_270.csv'
+    restart_binary = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_2e5_1e5_0_6rows/wrk_Serpent/input.wrk_270'
 elif read_first_compositions:
     restart_binary = '/global/scratch/users/yvesrobert/HxF/Tools/Create_initial_compositions/restart/first_compos.wrk'
     restart_data = '/global/scratch/users/yvesrobert/HxF/Tools/Create_initial_compositions/data_first_compos.csv'
