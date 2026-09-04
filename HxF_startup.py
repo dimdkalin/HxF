@@ -3,7 +3,6 @@
 # - When using more than 15000 neutrons/(cycle.node) it happens that the calculation just holds for ever
 # - Thermal coupling with domain decomposition does not work
 # - Startup support only for discrete motion
-# - PID control might not work properly when there is more than one type of bank material
 
 print("""
 ============================================================
@@ -267,7 +266,10 @@ else:
         if startup:
             for ind, mat in enumerate(bank_mats):
                 #replaced pebbles are ones in core that were not there initially
-                count_replaced[ind] = len(data.loc[(data['r_dist'] <= r_bed) & (data['initial']==0) & (data['mat_name']==bank_mats[ind])])
+                num_core = len(data.loc[data['r_dist'] <= r_bed])
+                count_replaced[ind] = num_core - len(data.loc[(data['x'] < bank_centers[ind] + r_bed) & (data['x'] > bank_centers[ind]-r_bed) & (data['initial']) & (data['mat_name']==bank_mats[ind])])
+                #count_replaced[ind] = len(data.loc[(data['r_dist'] <= r_bed) & (data['initial']==0) & (data['mat_name']==bank_mats[ind])])
+            print_with_timestamp(f'Number of pebbles replaced: {count_replaced}')    
     else:
         data = pd.read_csv(pbed_file, header=None, names=['x', 'y', 'z', 'r', 'uni'], sep=r"\s+")
 
@@ -361,6 +363,7 @@ if domain_decomposition:
         
         first_pbed = Pebble_bed()
         first_pbed.read_dataframe(data.loc[data['r_dist'] <= r_bed])
+        first_pbed.data.reset_index(drop=True, inplace = True)
         first_pbed.decompose_in_domains(decomposition_domains, decomposition_types)
         first_pbed.data.loc[data['isactive'], 'domain_id'].astype(int).to_csv('initial_domains1.txt', index=False, header=False)
         init_domain_files.append('initial_domains1.txt')
@@ -461,7 +464,11 @@ for uni_id, (uni_name, uni) in enumerate(threshold_pebbles_dict.items()):
 step_wise_variables["time_step"] = []
 for step in range(Nsteps):
     if discrete_motion:
-        step_wise_variables["time_step"].append(step_wise_variables["Nrows_to_move"][step] * (time_per_pass/(data.row_id.max() + 1))) # days)
+        try:
+            _ = len(time_per_pass)
+            step_wise_variables["time_step"].append(step_wise_variables["Nrows_to_move"][step] * (time_per_pass[step]/(data.row_id.max() + 1))) # days)
+        except:
+            step_wise_variables["time_step"].append(step_wise_variables["Nrows_to_move"][step] * (time_per_pass/(data.row_id.max() + 1))) # days)
     else:
         step_wise_variables["time_step"].append(step_wise_variables["DEM_step_increment"][step] * DEM_circulation_step/circulation_rate) # days
 
@@ -684,7 +691,13 @@ for step in range(first_step, Nsteps):
     else:
         time_step = step_wise_variables["time_step"][step-1]
     next_time = curr_time + time_step*DAYS
-    Npasses = next_time / (time_per_pass*DAYS)
+    try:
+        _ = len(time_per_pass)
+        Npasses = 0
+        for i in range(first_step,step+1):
+            Npasses += step_wise_variables["Nrows_to_move"][i]/(data.row_id.max() + 1)
+    except:
+        Npasses = next_time / (time_per_pass*DAYS)
     pbed.cycle_hist.loc[step, 'time'] = next_time/DAYS
     pbed.cycle_hist.loc[step, 'passes'] = Npasses
     if startup:
@@ -799,60 +812,6 @@ for step in range(first_step, Nsteps):
         Nrecirculated = pbed.data["recirculated"].sum()
         print_with_timestamp(f'\t\t{Nrecirculated} pebbles to recirculate\n')
 
-        if startup:
-            if pbed.cycle_hist.loc[step, 'fuel_fraction'] < target_fuel_frac:
-                to_replace = (pbed.data['recirculated'] & ~pbed.data['isactive'])
-            else:
-                #Replace removed pebble with next material in bank_mats
-                to_replace = (pbed.data['recirculated'] & ~(pbed.data['mat_name'] == bank_mats[-1]))
-            pbed.data['replaced'] = False
-            replace_indices = np.where(to_replace)[0]
-            ###CALCULATE replace_num here
-            if len(k_arr) == 1:
-                replace_num = calcReplace(pid_constants, k_arr)
-                last_replaced = replace_num
-            else:
-                replace_num = calcReplace(pid_constants, k_arr, last_replaced)
-                last_replaced = replace_num
-            
-            #check if maximum limit is defined in input    
-            try:
-                max_replace
-            except NameError:
-                max_replace = len(replace_indices)
-            
-            #impose limits on response
-            replace_num = int(replace_num)
-            if replace_num < 0:
-                replace_num = 0
-            elif replace_num > max_replace:
-                replace_num = max_replace
-
-            
-            if replace_num < len(replace_indices):
-                replace_indices = np.random.choice(replace_indices, size = replace_num , replace = False)
-            for ind in replace_indices:
-                if pbed.cycle_hist.loc[step, 'fuel_fraction'] < target_fuel_frac:
-                    #Replace with first bank material
-                    mat_ind = -1
-                else:
-                    mat_i = pbed.data.loc[ind, 'mat_name']
-                    mat_ind = 0
-                    while mat_i != bank_mats[mat_ind]:
-                        mat_ind += 1
-                        if(mat_ind >= len(bank_mats)):
-                            #Replace with first bank material
-                            mat_ind = -1
-                            break
-                #Replace with material from next bank in series        
-                mat_ind += 1
-                if(count_replaced[mat_ind] < num_core):
-                    replace_ind = int((mat_ind+1)*num_core+count_replaced[mat_ind])
-                    pbed.data.loc[[ind,replace_ind],['x','y','z']] = pbed.data.loc[[replace_ind,ind],['x','y','z']].values
-                    pbed.data.loc[replace_ind,'replaced'] = True
-                    count_replaced[mat_ind] += 1
-            
-
         # Detect discarded pebbles based on set threshold
         pbed.data['discarded'] = False
         print_with_timestamp(f'\tDiscard test for {len(threshold_pebbles_dict)} types of pebbles:')
@@ -880,6 +839,59 @@ for step in range(first_step, Nsteps):
             print_with_timestamp(f'\t\t\t{Ndiscarded} pebbles to discard\n')
         Ndiscarded = pbed.data["discarded"].sum()
         print_with_timestamp(f'\t\t{Ndiscarded} pebbles to discard\n')
+        
+        if startup:
+            if pbed.cycle_hist.loc[step, 'fuel_fraction'] < target_fuel_frac:
+                to_replace = (pbed.data['recirculated']) & (~pbed.data['discarded']) & (~pbed.data['isactive'])
+            else:
+                #Replace removed pebble with next material in bank_mats
+                to_replace = (pbed.data['recirculated']) & (~pbed.data['discarded']) & (~(pbed.data['mat_name'] == bank_mats[-1]))
+            pbed.data['replaced'] = False
+            replace_indices = np.where(to_replace)[0]
+            ###CALCULATE replace_num here
+            if len(k_arr) == 1:
+                replace_num = calcReplace(pid_constants, k_arr)
+                last_replaced = replace_num
+            else:
+                replace_num = calcReplace(pid_constants, k_arr, last_replaced)
+                last_replaced = replace_num
+            
+            
+            #impose limits on response
+            replace_num = int(replace_num)
+            if replace_num < 0:
+                replace_num = 0
+                
+            try:
+            #check if maximum limit is defined in input  
+                max_replace
+                if replace_num > max_replace:
+                    replace_num = max_replace
+            except NameError:
+            #limit signal to replacable pebbles
+                if replace_num > len(replace_indices):
+                    replace_num = len(replace_indices)
+            
+            print(len(replace_indices),max_replace)
+            
+            if replace_num < len(replace_indices):
+                replace_indices = np.random.choice(replace_indices, size = replace_num , replace = False)
+            for ind in replace_indices:
+                mat_i = pbed.data.loc[ind, 'mat_name']
+                mat_ind = 0
+                while mat_i != bank_mats[mat_ind]:
+                    mat_ind += 1
+                    if(mat_ind >= len(bank_mats)):
+                        #Replace with first bank material
+                        mat_ind = -1
+                        break
+                #Replace with material from next bank in series        
+                mat_ind += 1
+                if(count_replaced[mat_ind] < num_core):
+                    replace_ind = int((mat_ind+1)*num_core+count_replaced[mat_ind])
+                    pbed.data.loc[[ind,replace_ind],['x','y','z']] = pbed.data.loc[[replace_ind,ind],['x','y','z']].values
+                    pbed.data.loc[replace_ind,'replaced'] = True
+                    count_replaced[mat_ind] += 1
 
         # Add to pebble inventory table
         pbed.cycle_hist.loc[step, ['recirculated', 'discarded']] = [Nrecirculated, Ndiscarded]
@@ -979,6 +991,7 @@ for step in range(first_step, Nsteps):
                                 break
                         #Replace with material from next bank in series        
                         mat_ind += 1
+                        ind += mat_ind*num_core
                         if(count_replaced[mat_ind] < num_core):
                             replace_ind = int((mat_ind+1)*num_core+count_replaced[mat_ind])
                             pbed.data.loc[[ind,replace_ind],['x','y','z']] = pbed.data.loc[[replace_ind,ind],['x','y','z']].values

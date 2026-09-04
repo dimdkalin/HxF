@@ -44,9 +44,9 @@ conda deactivate
 conda activate $CONDA_ENV_NAME
 
 ## RE-ENFORCE CLUSTER MPI PATHS OVER CONDA BINARES
-echo "Re-asserting system OpenMPI priorities..."
-module unload openmpi/4.1.6
-module load openmpi/4.1.6
+#echo "Re-asserting system OpenMPI priorities..."
+#module unload openmpi/4.1.6
+#module load openmpi/4.1.6
 
 # Check and install conda-build if necessary
 #echo "Checking for conda-build..."

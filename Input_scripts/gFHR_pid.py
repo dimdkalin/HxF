@@ -3,7 +3,7 @@
 #%% Calculation options
 # Transport/depletion
 transport = True
-resolve_first = True
+resolve_first = False
 correct = False
 domain_decomposition = True
 startup = True
@@ -13,7 +13,7 @@ discrete_motion = True
 looping = False
 
 # Restart
-restart_calculation = False
+restart_calculation = True
 read_first_compositions = False
 
 # Output
@@ -25,7 +25,7 @@ write_restart_discarded = False
 
 #%% Case
 path_to_case = './Models' # Path to input folder parent
-case_name = 'gFHR_graphite_two_fuels' # Name of the input folder
+case_name = 'gFHR_three_fuels' # Name of the input folder
 main_input_file = 'input' # Name of the main input file
 
 #%% Serpent data (from Serpent input)
@@ -37,10 +37,10 @@ r_pebbles = 2 # cm
 #Startup related parameters
 pbed_cell_name = 'c_pb'
 r_bed = 120
-bank_centers = [1000]
-bank_mats = ['fuel1']
-max_replace = 5000
-pid_constants = [2e5,1e5,0]
+bank_centers = [1000,2000]
+bank_mats = ['fuel3','fuel1']
+#max_replace = 5000
+pid_constants = [4e5,1e5,0]
 
 # Others
 pbed_universe_name = 'u_pb'
@@ -57,7 +57,8 @@ decay_step = 0 # days
 
 #%% Burnup cycle
 pebbles_dict = {'u_fuel_pebble1':{'mat_name':'fuel1', 'r_fuel_kernel':0.02125, 'Ntrisos':9022, 'threshold_type':'burnup', 'threshold_dir':+1, 'threshold':168},
-		'u_fuel_pebble2':{'mat_name':'fuel2', 'r_fuel_kernel':0.02125, 'Ntrisos':9022, 'threshold_type':'burnup', 'threshold_dir':+1, 'threshold':168}}
+		'u_fuel_pebble2':{'mat_name':'fuel2', 'r_fuel_kernel':0.02125, 'Ntrisos':9022, 'threshold_type':'burnup', 'threshold_dir':+1, 'threshold':168},
+		'u_fuel_pebble3':{'mat_name':'fuel3', 'r_fuel_kernel':0.02125, 'Ntrisos':9022, 'threshold_type':'burnup', 'threshold_dir':+1, 'threshold':168}}
 target_fuel_frac = 1.0
 
 
@@ -87,7 +88,7 @@ else:
         looper_method = 'xyz'
 
 #%% Outputing
-output_folder_name = 'gFHR_pid_2e5_1e5_0_6rows_max_5e3' # Name of the output folder
+output_folder_name = 'gFHR_pid_4e5_1e5_0_3fuels_restart_test_2' # Name of the output folder
 verbosity_mode = 1
 inventory_names = []
 
@@ -106,10 +107,10 @@ if write_restart_discarded:
 
 #%% Restart read
 if restart_calculation:
-    restart_step = 270
-    restart_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_2e5_1e5_0_6rows/Data/core_270.csv'
-    restart_cycle_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_2e5_1e5_0_6rows/Data/cycle_270.csv'
-    restart_binary = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_2e5_1e5_0_6rows/wrk_Serpent/input.wrk_270'
+    restart_step = 81
+    restart_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_4e5_1e5_0_3fuels/Data/core_81.csv'
+    restart_cycle_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_4e5_1e5_0_3fuels/Data/cycle_81.csv'
+    restart_binary = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_4e5_1e5_0_3fuels/wrk_Serpent/input.wrk_81'
 elif read_first_compositions:
     restart_binary = '/global/scratch/users/yvesrobert/HxF/Tools/Create_initial_compositions/restart/first_compos.wrk'
     restart_data = '/global/scratch/users/yvesrobert/HxF/Tools/Create_initial_compositions/data_first_compos.csv'

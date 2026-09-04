@@ -1607,7 +1607,7 @@ class Pebble_bed:
                 ctr = center[i_decomp-1][i_domain]
                 sub_pbed = deepcopy(self)
                 sub_pbed.data = sub_pbed.data[sub_pbed.data[f'domain_id_{i_decomp-1}'] == i_domain]
-                # sub_pbed.data = sub_pbed.data.reset_index(drop=True)
+                #sub_pbed.data = sub_pbed.data.reset_index(drop=True)
                 sub_pbed.decompose_in_domains_simple(n_domains, decomposition_type, filling_domain, ctr, shift_sector, idle=False, verbose=verbose, level=level+1, log_delim=log_delim)
                 domain_id[sub_pbed.data.index] = sub_pbed.data.domain_id
             self.data[f'domain_id_{i_decomp}'] = np.array(domain_id)

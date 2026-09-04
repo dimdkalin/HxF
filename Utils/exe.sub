@@ -7,5 +7,5 @@ if [ -n "$OF_BASHRC" ]; then
 fi
 
 # Run the Python script
-mpirun -np 1 --report-bindings --bind-to none -oversubscribe python ${PYTHON_SCRIPT} ${INPUT_SCRIPT} ${PARTITION_CPUS_PER_NODE} ${NNODES}
+mpirun -np 1 --prefix /global/software/rocky-8.x86_64/gcc/linux-rocky8-x86_64/gcc-13.2.0/openmpi-4.1.6-fvizfdj24f3gxalmikf2bszpbjgzba76 --report-bindings --bind-to none -oversubscribe python ${PYTHON_SCRIPT} ${INPUT_SCRIPT} ${PARTITION_CPUS_PER_NODE} ${NNODES}
 #mpirun -np ${NNODES} --report-bindings --bind-to none -oversubscribe python ${PYTHON_SCRIPT} ${INPUT_SCRIPT} ${PARTITION_CPUS_PER_NODE} ${NNODES}
