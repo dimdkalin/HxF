@@ -9,8 +9,8 @@ set acelib  "/global/home/groups/co_nuclear/serpent/xsdata/endfb7/sss_endfb7u.xs
 % --- Fuel material (4.0 wt-% enriched uranium), density 10.1 g/cm3
 
 mat fuel     -10.1
-92235.03c    -0.04 
-92238.03c    -0.96
+92235.00c    -0.04 
+92238.00c    -0.96
 
 /************************
  * Geometry definitions *

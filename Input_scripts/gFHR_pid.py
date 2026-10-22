@@ -7,6 +7,7 @@ resolve_first = False
 correct = False
 domain_decomposition = True
 startup = True
+correct_pebs = True
 
 # Motion
 discrete_motion = True
@@ -34,13 +35,20 @@ main_input_file = 'input' # Name of the main input file
 pbed_file = 'fpb_pos'
 r_pebbles = 2 # cm
 
-#Startup related parameters
+# Startup related parameters
 pbed_cell_name = 'c_pb'
 r_bed = 120
 bank_centers = [1000,2000]
 bank_mats = ['fuel3','fuel1']
 #max_replace = 5000
 pid_constants = [4e5,1e5,0]
+target_k = 1.0075
+target_fuel_frac = 1.0
+limit_power_pebbles = 3608.8
+
+# Parameters for correcting number of pebbles
+target_limits = [1.00,1.01]
+neutrons_per_iteration = 20000
 
 # Others
 pbed_universe_name = 'u_pb'
@@ -52,15 +60,13 @@ detectors = {'flux_pebbles_thermal':{'E':[1e-11, 1.86e-6], 'normalized':True},
 power_normalization_field = 'power'
 power_normalization_value = 280e6 # W
 Nsteps = 1000
-neutrons_per_cycle = [20000]*(120)+[100000]*(Nsteps-120)
+neutrons_per_cycle = [100000]*Nsteps
 decay_step = 0 # days
 
 #%% Burnup cycle
 pebbles_dict = {'u_fuel_pebble1':{'mat_name':'fuel1', 'r_fuel_kernel':0.02125, 'Ntrisos':9022, 'threshold_type':'burnup', 'threshold_dir':+1, 'threshold':168},
-		'u_fuel_pebble2':{'mat_name':'fuel2', 'r_fuel_kernel':0.02125, 'Ntrisos':9022, 'threshold_type':'burnup', 'threshold_dir':+1, 'threshold':168},
-		'u_fuel_pebble3':{'mat_name':'fuel3', 'r_fuel_kernel':0.02125, 'Ntrisos':9022, 'threshold_type':'burnup', 'threshold_dir':+1, 'threshold':168}}
-target_fuel_frac = 1.0
-
+		'u_fuel_pebble2':{'mat_name':'fuel2', 'r_fuel_kernel':0.02125, 'Ntrisos':9022, 'threshold_type':'burnup', 'threshold_dir':+1, 'threshold':105},
+		'u_fuel_pebble3':{'mat_name':'fuel3', 'r_fuel_kernel':0.02125, 'Ntrisos':9022, 'threshold_type':'burnup', 'threshold_dir':+1, 'threshold':140}}
 
 #%% Motion
 motion_direction = +1
@@ -88,7 +94,7 @@ else:
         looper_method = 'xyz'
 
 #%% Outputing
-output_folder_name = 'gFHR_pid_4e5_1e5_0_3fuels_restart_test_2' # Name of the output folder
+output_folder_name = 'gFHR_pid_pebs_correct_3fuels_restart' # Name of the output folder
 verbosity_mode = 1
 inventory_names = []
 
@@ -107,10 +113,10 @@ if write_restart_discarded:
 
 #%% Restart read
 if restart_calculation:
-    restart_step = 81
-    restart_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_4e5_1e5_0_3fuels/Data/core_81.csv'
-    restart_cycle_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_4e5_1e5_0_3fuels/Data/cycle_81.csv'
-    restart_binary = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_4e5_1e5_0_3fuels/wrk_Serpent/input.wrk_81'
+    restart_step = 23
+    restart_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_pebs_correct_3fuels/Data/core_23.csv'
+    restart_cycle_data = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_pebs_correct_3fuels/Data/cycle_23.csv'
+    restart_binary = '/global/scratch/users/dimitrikalinich/HxF/Cases/gFHR_pid_pebs_correct_3fuels/wrk_Serpent/input.wrk_23'
 elif read_first_compositions:
     restart_binary = '/global/scratch/users/yvesrobert/HxF/Tools/Create_initial_compositions/restart/first_compos.wrk'
     restart_data = '/global/scratch/users/yvesrobert/HxF/Tools/Create_initial_compositions/data_first_compos.csv'

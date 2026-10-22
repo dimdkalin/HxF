@@ -45,8 +45,8 @@ ene MyEnergyGrid 3 500 1e-11 2e1
 
 
 % Nuclear data import
-set nfylib "/global/home/groups/co_nuclear/serpent/xsdata/endfb7/sss_endfb7.nfy"
-set declib "/global/home/groups/co_nuclear/serpent/xsdata/endfb7/sss_endfb7.dec"
+set nfylib "/global/home/groups/co_nuclear/serpent/xsdata/endf8/endf8.nfy"
+set declib "/global/home/groups/co_nuclear/serpent/xsdata/endf8/endf8.dec"
 
 
 
@@ -133,67 +133,67 @@ peb_graph2
 % Material He cells
 
 mat	He	-0.004855559428244974	rgb	230 230 230	% adens = 4.062301E+21
-2004.03c	-0.004855559428244974	% adens = 4.062301E+21
+2004.00c	-0.004855559428244974	% adens = 4.062301E+21
 
 % Material fuel
 mat	fuel1	-10.1	burn	1		rgb	204 51 51
-92235.03c	-0.19
-92238.03c	-0.81
+92235.00c	-0.19
+92238.00c	-0.81
 
 
 mat fuel2  -8.2	burn	1		rgb	255 255 0
-92235.03c	-0.0072
-92238.03c	-0.9928
-%43099.03c -0.5
-%53129.03c -0.5
+92235.00c	-0.0072
+92238.00c	-0.9928
+%43099.00c -0.5
+%53129.00c -0.5
 
 
 
 % Material peb_graph
 mat	peb_graph	-1.730000E+00	moder	graph	6000		rgb	51 51 51	% adens = 8.674259E+22
-6000.03c	-1.729998E+00	% adens = 8.674247E+22
-5010.03c	-3.684243E-07	% adens = 2.215836E+16
-5011.03c	-1.656418E-06	% adens = 9.060685E+16
+6000.00c	-1.729998E+00	% adens = 8.674247E+22
+5010.00c	-3.684243E-07	% adens = 2.215836E+16
+5011.00c	-1.656418E-06	% adens = 9.060685E+16
 
 
 mat	peb_graph2	-1.730000E+00	moder	graph	6000		rgb	255 255 0	% adens = 8.674259E+22
-6000.03c	-1.729998E+00	% adens = 8.674247E+22
-5010.03c	-3.684243E-07	% adens = 2.215836E+16
-5011.03c	-1.656418E-06	% adens = 9.060685E+16
+6000.00c	-1.729998E+00	% adens = 8.674247E+22
+5010.00c	-3.684243E-07	% adens = 2.215836E+16
+5011.00c	-1.656418E-06	% adens = 9.060685E+16
 
 
 % Material peb_shell
 mat	peb_shell	-1.730000E+00	moder	graph	6000		rgb	135 67 120	% adens = 8.674259E+22
-6000.03c	-1.729998E+00	% adens = 8.674247E+22
-5010.03c	-3.684243E-07	% adens = 2.215836E+16
-5011.03c	-1.656418E-06	% adens = 9.060685E+16
+6000.00c	-1.729998E+00	% adens = 8.674247E+22
+5010.00c	-3.684243E-07	% adens = 2.215836E+16
+5011.00c	-1.656418E-06	% adens = 9.060685E+16
 
 
 
 mat	peb_shell2	-1.730000E+00	moder	graph	6000		rgb	255 255 0	% adens = 8.674259E+22
-6000.03c	-1.729998E+00	% adens = 8.674247E+22
-5010.03c	-3.684243E-07	% adens = 2.215836E+16
-5011.03c	-1.656418E-06	% adens = 9.060685E+16
+6000.00c	-1.729998E+00	% adens = 8.674247E+22
+5010.00c	-3.684243E-07	% adens = 2.215836E+16
+5011.00c	-1.656418E-06	% adens = 9.060685E+16
 
 
 
 % Material buffer
 mat	buffer	-1.100000E+00	moder	graph	6000	rgb	51 51 51	% adens = 5.515424E+22
-6000.03c	-1.100000E+00	% adens = 5.515424E+22
+6000.00c	-1.100000E+00	% adens = 5.515424E+22
 
 % Material PyC
 mat	PyC	-1.900000E+00	moder	graph	6000	rgb	51 51 51	% adens = 9.526641E+22
-6000.03c	-1.900000E+00	% adens = 9.526641E+22
+6000.00c	-1.900000E+00	% adens = 9.526641E+22
 
 % Material SiC
 mat	SiC	-3.180000E+00	moder	graph	6000	rgb	51 51 51	% adens = 9.578191E+22
-6000.03c	-9.551405E-01	% adens = 4.789095E+22
-14028.03c	-2.224859E+00	% adens = 4.789095E+22
+6000.00c	-9.551405E-01	% adens = 4.789095E+22
+14028.00c	-2.224859E+00	% adens = 4.789095E+22
 
-therm	graph	300	gre7.00t	gre7.04t
+therm	graph	300	gre7.40t	gre7.41t
 
 
-set acelib "/global/home/groups/co_nuclear/serpent/xsdata/endfb7/sss_endfb7u.xsdata"
+set acelib "/global/home/groups/co_nuclear/serpent/xsdata/endf8/endf8.xsdata"
 
 
 

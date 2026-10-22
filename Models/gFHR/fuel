@@ -3,10 +3,11 @@
 
 %---Material
 mat fuel -10.5  vol 91013.12732 burn 1 tmp 959 % 0.362644 * 250971
-92235.09c 0.197507021080911
-92238.09c 0.802492978919089
-6000.09c 0.5
-8016.09c 1.5
+92235.02c 0.197507021080911
+92238.02c 0.802492978919089
+6012.02c 0.49465
+6013.02c 0.00535
+8016.02c 1.5
 
 %---Triso particle 
 particle p1
@@ -20,7 +21,7 @@ matrix
 %---Triso  lattice
 %lat l1 6 0. 0. 0.08860629 p1
 cell inf infU matrix -infinite
-pbed l1 infU "trisobed"
+pbed l1 infU  "trisobed"
 
 %---Fill pebble with lattice
 cell c1_1 u_fuel_pebble  pebgraph -central_graphite

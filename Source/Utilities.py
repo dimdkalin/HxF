@@ -11,6 +11,7 @@ from cerberus.solvers import CodeInput, Solver
 import cerberus as cb
 import time
 import datetime
+import copy
 
 np.random.seed(12345)
 
@@ -760,7 +761,7 @@ def getdict(dictionary, key=None):
 	else:
 		return np.array(list(dictionary.keys()))
 
-def calcReplace(pid_constants, k_arr,replaced=0.0):
+def calcReplace(pid_constants, k_arr, target, replaced=0.0):
     Kp = pid_constants[0]
     Ki = pid_constants[1]
     Kd = pid_constants[2]
@@ -769,12 +770,81 @@ def calcReplace(pid_constants, k_arr,replaced=0.0):
     K3 = Kd
     
     if len(k_arr) == 1:
-        replace_num = K1*(1.0-k_arr[-1])
+        replace_num = K1*(target-k_arr[-1])
     elif len(k_arr) == 2:
-        replace_num = replaced + K1*(1.0-k_arr[-1])+K2*(1.0-k_arr[-2])
+        replace_num = replaced + K1*(target-k_arr[-1])+K2*(target-k_arr[-2])
     else:
-        replace_num = replaced + K1*(1.0-k_arr[-1])+K2*(1.0-k_arr[-2]) + K3*(1.0-k_arr[-3])    
+        replace_num = replaced + K1*(target-k_arr[-1])+K2*(target-k_arr[-2]) + K3*(target-k_arr[-3])    
     return replace_num
+
+def run_iteration(data,count_replaced,replace_indices,replace_num,bank_mats,num_core,active_pebbles_dict,threshold_pebbles_dict,tra,serpent):
+    #create temp copies of variables and replace pebbles in copy
+    temp_active = active_pebbles_dict.copy()
+    temp_pbed_data = data.copy()
+    temp_count_replaced = count_replaced.copy()
+    temp_replace_indices = copy.deepcopy(replace_indices)
+    if replace_num < len(temp_replace_indices):
+        temp_replace_indices = np.random.choice(temp_replace_indices, size = replace_num , replace = False)
+    for ind in temp_replace_indices:
+        mat_i = temp_pbed_data.loc[ind, 'mat_name']
+        mat_ind = 0
+        while mat_i != bank_mats[mat_ind]:
+            mat_ind += 1
+            if(mat_ind >= len(bank_mats)):
+                #Replace with first bank material
+                mat_ind = -1
+                break
+        #Replace with material from next bank in series        
+        mat_ind += 1
+        if(temp_count_replaced[mat_ind] < num_core):
+            replace_ind = int((mat_ind+1)*num_core+temp_count_replaced[mat_ind])
+            temp_pbed_data.loc[[ind,replace_ind],['x','y','z']] = temp_pbed_data.loc[[replace_ind,ind],['x','y','z']].values
+            temp_pbed_data.loc[replace_ind,'replaced'] = True
+            temp_count_replaced[mat_ind] += 1    
+    #Replace discarded pebbles in copy
+    for uni_id, (uni_name, uni) in enumerate(threshold_pebbles_dict.items()):
+        material = uni['mat_name']
+        if (material != bank_mats[-1]) :
+            #replace pebble with fresh pebble of next fuel type 
+            to_replace = temp_pbed_data.loc[temp_pbed_data[f'pebble_type_{uni_id}'], "discarded"]
+            temp_replace_indices = np.where(to_replace)[0]
+            for ind in temp_replace_indices:
+                mat_ind = 0
+                while material != bank_mats[mat_ind]:
+                    mat_ind += 1
+                    if(mat_ind >= len(bank_mats)):
+                        #Replace with first bank material
+                        mat_ind = -1
+                        break
+                #Replace with material from next bank in series        
+                mat_ind += 1
+                ind += mat_ind*num_core
+                if(temp_count_replaced[mat_ind] < num_core):
+                    replace_ind = int((mat_ind+1)*num_core+temp_count_replaced[mat_ind])
+                    temp_pbed_data.loc[[ind,replace_ind],['x','y','z']] = temp_pbed_data.loc[[replace_ind,ind],['x','y','z']].values
+                    temp_pbed_data.loc[replace_ind,'replaced'] = True
+        
+                    temp_count_replaced[mat_ind] += 1
+        else:
+            discarded = temp_pbed_data.loc[temp_pbed_data[f'pebble_type_{uni_id}'], "discarded"].values
+            burnup_vec = temp_pbed_data.loc[temp_pbed_data[f'pebble_type_{uni_id}'], "burnup"].values
+            burnup_vec.flags.writeable = True
+            burnup_vec[discarded] = 0.0
+
+            Serpent_set_values(tra['reset_fuel'][getdict(temp_active, 'mat_name')[uni_id]], discarded.astype(int))
+            Serpent_set_values(tra['burnup_in'][getdict(temp_active, 'mat_name')[uni_id]], burnup_vec.astype(float))
+    #Send updated pbed to Serpent
+    new_positions = temp_pbed_data[['x','y','z','r']]
+    new_xyzr = new_positions.values.ravel() # flatten array
+    Serpent_set_values(tra['xyzr_in'], new_xyzr) # communicate to Serpent
+    temp_pbed_data[[*'xyzr']] = xyzr_to_array(new_xyzr) # fill table with new positions
+    temp_pbed_data['r_dist'] = np.linalg.norm(temp_pbed_data[['x', 'y']], axis=1) # calculate new radial positions
+        
+    
+    serpent.solve()
+    keff = Serpent_get_values(tra['keff'])[0]
+    print_with_timestamp(f'{replace_num} replaced, k is {keff}')
+    return keff
 
 #data, PF, N, output = use_disperser('cylinder', (120.00, 60.00, 369.47), 0.6, 2, 1, 'fpb_pos', 64, grow_and_shake=True, shake_factor=0.05, growth_factor=0.05, print_output=True)
 

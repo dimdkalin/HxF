@@ -3,6 +3,10 @@
 # - When using more than 15000 neutrons/(cycle.node) it happens that the calculation just holds for ever
 # - Thermal coupling with domain decomposition does not work
 # - Startup support only for discrete motion
+# - Residence time and insertion step aren't correct when using startup mode
+# - Lack of error handling when using correct_pebs and not providing needed params
+# - Restart for startup + correct_pebs might not work correctly
+# - Failed pebs calculation only works in startup mode
 
 print("""
 ============================================================
@@ -173,9 +177,9 @@ if transport:
             replaced_arr = np.zeros(len(k_arr))
             for i in range(len(replaced_arr)):
                 if i == 0 :
-                    replaced_arr[i] = calcReplace(pid_constants, k_arr[:i+1])
+                    replaced_arr[i] = calcReplace(pid_constants, k_arr[:i+1], target_k)
                 else:
-                    replaced_arr[i] = calcReplace(pid_constants, k_arr[:i+1], replaced_arr[i-1])
+                    replaced_arr[i] = calcReplace(pid_constants, k_arr[:i+1], target_k, replaced_arr[i-1])
             last_replaced = replaced_arr[-2]
             
         restart_files = glob(restart_binary+'*')
@@ -339,7 +343,10 @@ Egrids.clear() # Update the original Egrids dictionary with the new one
 Egrids.update(new_Egrids)
 
 for det_name in detectors: # Loop through the detectors again and write detector information to the main input file
-    s = f'det {det_name} dc {pbed_cell_name} dl {pbed_universe_name} '  # Basic detector information
+    if startup:
+        s = f'det {det_name} dc {pbed_cell_name} dl {pbed_universe_name} '  # Basic detector information
+    else:
+        s = f'det {det_name} dl {pbed_universe_name} '  # Basic detector information
     Egrid = [key for key, values in Egrids.items() if det_name in values]  # Find the energy grid corresponding to the detector
     if len(Egrid) > 0:  # If an energy grid is found, add it to the 'det' line
         s += f'de {Egrid[0]} '
@@ -850,10 +857,10 @@ for step in range(first_step, Nsteps):
             replace_indices = np.where(to_replace)[0]
             ###CALCULATE replace_num here
             if len(k_arr) == 1:
-                replace_num = calcReplace(pid_constants, k_arr)
+                replace_num = calcReplace(pid_constants, k_arr, target_k)
                 last_replaced = replace_num
             else:
-                replace_num = calcReplace(pid_constants, k_arr, last_replaced)
+                replace_num = calcReplace(pid_constants, k_arr, target_k, last_replaced)
                 last_replaced = replace_num
             
             
@@ -871,9 +878,58 @@ for step in range(first_step, Nsteps):
             #limit signal to replacable pebbles
                 if replace_num > len(replace_indices):
                     replace_num = len(replace_indices)
-            
-            print(len(replace_indices),max_replace)
-            
+           
+            # Perform iterative search for correct response
+            if correct_pebs:
+                Serpent_set_values(tra['neutrons_per_cycle'], neutrons_per_iteration)
+                print_with_timestamp('Starting correction of pebble response')
+                keff = run_iteration(pbed.data,count_replaced,replace_indices,replace_num,bank_mats,num_core,active_pebbles_dict,threshold_pebbles_dict,tra,serpent)
+
+                pebs_low = 0
+                try:
+                #check if maximum limit is defined in input  
+                    pebs_high = max_replace
+                except NameError:
+                    pebs_high = len(replace_indices)
+                
+                if keff < target_limits[0]:
+                    pebs_low = replace_num
+                    keff = run_iteration(pbed.data,count_replaced,replace_indices,pebs_high,bank_mats,num_core,active_pebbles_dict,threshold_pebbles_dict,tra,serpent)
+                    if keff > target_limits[1]:
+                        #run bisection method loop
+                        while (keff>target_limits[1] or keff<target_limits[0]):
+                            replace_num = int((pebs_high+pebs_low)/2)
+                            keff = run_iteration(pbed.data,count_replaced,replace_indices,replace_num,bank_mats,num_core,active_pebbles_dict,threshold_pebbles_dict,tra,serpent)
+                            if keff > target_limits[1]:
+                                pebs_high = replace_num
+                            elif keff < target_limits[0]:
+                                pebs_low = replace_num
+                    else:
+                        replace_num = pebs_high
+                elif keff > target_limits[1]:
+                    pebs_high = replace_num
+                    keff = run_iteration(pbed.data,count_replaced,replace_indices,pebs_low,bank_mats,num_core,active_pebbles_dict,threshold_pebbles_dict,tra,serpent)
+                    if keff > target_limits[1]:
+                        replace_num = pebs_low
+                    else:
+                        replace_num = pebs_low
+                        #run bisection method loop
+                        while (keff>target_limits[1] or keff<target_limits[0]):
+                            replace_num = int((pebs_high+pebs_low)/2)
+                            keff = run_iteration(pbed.data,count_replaced,replace_indices,replace_num,bank_mats,num_core,active_pebbles_dict,threshold_pebbles_dict,tra,serpent)
+                            if keff > target_limits[1]:
+                                pebs_high = replace_num
+                            elif keff < target_limits[0]:
+                                pebs_low = replace_num
+                print_with_timestamp(f'Finished correction of pebble response to {replace_num}')
+                #Reset number of neutrons_per_cycle      
+                if step == 0:
+                    if "neutrons_per_cycle" in step_wise_variables:
+                        Serpent_set_values(tra['neutrons_per_cycle'], step_wise_variables["neutrons_per_cycle"][0])
+                else:
+                    if "neutrons_per_cycle" in step_wise_variables:
+                        Serpent_set_values(tra['neutrons_per_cycle'], step_wise_variables["neutrons_per_cycle"][step-1])
+                        
             if replace_num < len(replace_indices):
                 replace_indices = np.random.choice(replace_indices, size = replace_num , replace = False)
             for ind in replace_indices:
@@ -977,7 +1033,11 @@ for step in range(first_step, Nsteps):
         if transport:
             for uni_id, (uni_name, uni) in enumerate(threshold_pebbles_dict.items()):
                 material = uni['mat_name']
-                if (startup & (material != bank_mats[-1])) :
+                try:
+                    _ = bank_mats
+                except NameError:
+                    bank_mats = [0]
+                if (startup & (material != bank_mats[-1])):
                     #replace pebble with fresh pebble of next fuel type 
                     to_replace = pbed.data.loc[pbed.data[f'pebble_type_{uni_id}'], "discarded"]
                     replace_indices = np.where(to_replace)[0]
@@ -1016,6 +1076,7 @@ for step in range(first_step, Nsteps):
                 if startup:
                     pbed.data.loc[pbed.data['replaced'], f'integrated_{name}'] = 0.0
                     pbed.data.loc[pbed.data['replaced'], f'integrated_{name}_unc'] = 0.0
+                    
 
         pbed.data.loc[pbed.data['discarded'], 'insertion_step'] = step # set insertion step of fresh pebble to current step
         pbed.data.loc[pbed.data['discarded'], 'residence_time'] = 0.0 # reset residence time to 0
@@ -1023,6 +1084,7 @@ for step in range(first_step, Nsteps):
         pbed.data.loc[pbed.data['discarded'], 'initial'] = 0 # once replaced at least once, pebbles are not initial anymore
         
         if startup:
+            pbed.data.loc[pbed.data['discarded'], 'failed'] = False 
             pbed.data.loc[pbed.data['replaced'], 'insertion_step'] = step # set insertion step of fresh pebble to current step
             pbed.data.loc[pbed.data['replaced'], 'residence_time'] = 0.0 # reset residence time to 0
             pbed.data.loc[pbed.data['replaced'], 'passes'] = 1 # reset number of passes to 1
@@ -1253,6 +1315,17 @@ for step in range(first_step, Nsteps):
                 # Tallies
                 pbed.data[name] = Serpent_get_values(tra[name])
                 pbed.data[f'{name}_rel_unc'] =  Serpent_get_values(tra[f'{name}_rel_unc'])
+                
+                if name == 'power_pebbles':
+                    try:
+                        limit_power_pebbles
+                        for i in range(len(pbed.data)):
+                            pbed.data.loc[i,'failed'] = (pbed.data.loc[i,'power_pebbles'] >= limit_power_pebbles)
+                            if step > 0:
+                                if pbed.old_data.loc[i,'failed']:
+                                    pbed.data.loc[i,'failed'] = True #propagate failed tag between steps
+                    except NameError:
+                        continue
 
                 # Integrated tallies
                 if step > 0:
@@ -1275,6 +1348,9 @@ for step in range(first_step, Nsteps):
     pbed.data['pass_avg_r_dist'] = pbed.data['pass_agg_r_dist']/pbed.data['pass_residence_time']
     curr_time = float(next_time) # Increment time
 
+    #Calculate failed pebbles in core
+    if startup:
+        pbed.cycle_hist.loc[step, ['failed_in_core']] = len(pbed.data.loc[(pbed.data['r_dist'] <= r_bed) & pbed.data['failed']])
     #### Plots ###
     if plotting:
         print_with_timestamp('\tPlotting')
