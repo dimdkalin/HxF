@@ -6,7 +6,9 @@
 # - Residence time and insertion step aren't correct when using startup mode
 # - Lack of error handling when using correct_pebs and not providing needed params
 # - Restart for startup + correct_pebs might not work correctly
-# - Failed pebs calculation only works in startup mode
+
+# Things to fix ASAP:
+# - Number allowed to fail per step should be made a stepwise variable
 
 print("""
 ============================================================
@@ -717,8 +719,9 @@ for step in range(first_step, Nsteps):
             pbed.cycle_hist.loc[step, var] = step_wise_variables[var][0]
             print_with_timestamp(f'\t- {var}: {step_wise_variables[var][0]}')
         else:
-            pbed.cycle_hist.loc[step, var] = step_wise_variables[var][step-1]
-            print_with_timestamp(f'\t- {var}: {step_wise_variables[var][step-1]}')
+            if not(var == 'power_normalization_value' and correct_pow):
+                pbed.cycle_hist.loc[step, var] = step_wise_variables[var][step-1]
+                print_with_timestamp(f'\t- {var}: {step_wise_variables[var][step-1]}')
     print()
 
     #### First step, just run domain decomposition and transport if needed ####
@@ -1083,8 +1086,13 @@ for step in range(first_step, Nsteps):
         pbed.data.loc[pbed.data['discarded'], 'passes'] = 1 # reset number of passes to 1
         pbed.data.loc[pbed.data['discarded'], 'initial'] = 0 # once replaced at least once, pebbles are not initial anymore
         
-        if startup:
+        try:
+            _ = limit_power_pebbles
             pbed.data.loc[pbed.data['discarded'], 'failed'] = False 
+        except NameError:
+            continue
+        
+        if startup:
             pbed.data.loc[pbed.data['replaced'], 'insertion_step'] = step # set insertion step of fresh pebble to current step
             pbed.data.loc[pbed.data['replaced'], 'residence_time'] = 0.0 # reset residence time to 0
             pbed.data.loc[pbed.data['replaced'], 'passes'] = 1 # reset number of passes to 1
@@ -1231,6 +1239,32 @@ for step in range(first_step, Nsteps):
                 print_with_timestamp('\tEnd of thermal coupling')
 
             print_with_timestamp('\tSending Serpent signal to run transport')
+            
+            #Perform power correction here?
+            if correct_pow:
+                print_with_timestamp('Beginning power adjustment')
+                #Change to lower neutrons
+                Serpent_set_values(tra['neutrons_per_cycle'], neutrons_per_iteration)
+                #try to run at intended power
+                Serpent_set_values(tra[power_normalization_field], step_wise_variables["power_normalization_value"][step-1])
+                serpent.solve()
+                try:
+                    limit_power_pebbles
+                    temp_pow_pebs = np.array(Serpent_get_values(tra['power_pebbles']))
+                    temp_pow_pebs = np.sort(temp_pow_pebs)
+                    num_failed = np.count_nonzero(temp_pow_pebs >= limit_power_pebbles)
+                    if num_failed > allow_fail[step-1]:
+                        adjusted_pow = step_wise_variables["power_normalization_value"][step-1]*limit_power_pebbles/temp_pow_pebs[-1*allow_fail[step-1]-1]
+                        print_with_timestamp(f'Adjusted power to {adjusted_pow}')
+                        Serpent_set_values(tra[power_normalization_field], adjusted_pow)
+                        pbed.cycle_hist.loc[step, 'power_normalization_value'] = adjusted_pow
+                    else:
+                        pbed.cycle_hist.loc[step, 'power_normalization_value'] = step_wise_variables['power_normalization_value'][step-1]
+                except NameError:
+                    pbed.cycle_hist.loc[step, 'power_normalization_value'] = step_wise_variables['power_normalization_value'][step-1]
+                #Reset to normal neutron count
+                Serpent_set_values(tra['neutrons_per_cycle'], step_wise_variables["neutrons_per_cycle"][step-1])
+             
             serpent.advance_to_time(next_time) # Run Serpent transport + burn to next time (predictor if using predictor/corrector)
 
             if correct:
@@ -1322,6 +1356,9 @@ for step in range(first_step, Nsteps):
                         for i in range(len(pbed.data)):
                             pbed.data.loc[i,'failed'] = (pbed.data.loc[i,'power_pebbles'] >= limit_power_pebbles)
                             if step > 0:
+                                if restart_calculation:
+                                    data = pd.read_csv(restart_data, index_col=0)
+                                    pbed.old_data['failed'] = data['failed']
                                 if pbed.old_data.loc[i,'failed']:
                                     pbed.data.loc[i,'failed'] = True #propagate failed tag between steps
                     except NameError:
@@ -1349,8 +1386,11 @@ for step in range(first_step, Nsteps):
     curr_time = float(next_time) # Increment time
 
     #Calculate failed pebbles in core
-    if startup:
+    try:
+        _ = limit_power_pebbles
         pbed.cycle_hist.loc[step, ['failed_in_core']] = len(pbed.data.loc[(pbed.data['r_dist'] <= r_bed) & pbed.data['failed']])
+    except NameError:
+        continue
     #### Plots ###
     if plotting:
         print_with_timestamp('\tPlotting')
